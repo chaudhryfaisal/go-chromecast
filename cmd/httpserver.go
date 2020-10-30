@@ -23,19 +23,21 @@ import (
 var httpserverCmd = &cobra.Command{
 	Use:   "httpserver",
 	Short: "Start the HTTP server",
-	Long: `Start the HTTP server which provides an HTTP
-api to control chromecast devices on a network.`,
+	Long: `Start the HTTP server which provides an HTTP api to control chromecast devices on a network.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		addr, _ := cmd.Flags().GetString("http-addr")
 		port, _ := cmd.Flags().GetString("http-port")
+		deviceUuid, _ := cmd.Flags().GetString("uuid")
+		googleServiceAccount, _ := cmd.Flags().GetString("google-service-account")
+		languageCode, _ := cmd.Flags().GetString("language-code")
 
 		// TODO: Should only need verbose, but debug has stupidly hijacked
 		// the -v flag...
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		debug, _ := cmd.Flags().GetBool("debug")
 
-		return http.NewHandler(verbose || debug).Serve(addr + ":" + port)
+		return http.NewHandler(verbose || debug, deviceUuid, googleServiceAccount, languageCode).Serve(addr + ":" + port)
 	},
 }
 
@@ -43,4 +45,6 @@ func init() {
 	rootCmd.AddCommand(httpserverCmd)
 	httpserverCmd.Flags().String("http-port", "8011", "port for the http server to listen on")
 	httpserverCmd.Flags().String("http-addr", "0.0.0.0", "addr for the http server to listen on")
+	httpserverCmd.Flags().String("google-service-account", "", "google service account JSON file")
+	httpserverCmd.Flags().String("language-code", "en-US", "text-to-speech Language Code (de-DE, ja-JP,...)")
 }

@@ -18,14 +18,18 @@ type Handler struct {
 	mu   sync.Mutex
 	apps map[string]*application.Application
 
-	verbose bool
+	verbose                                        bool
+	deviceUuid, googleServiceAccount, languageCode string
 }
 
-func NewHandler(verbose bool) *Handler {
+func NewHandler(verbose bool, deviceUuid string, googleServiceAccount string, languageCode string) *Handler {
 	return &Handler{
-		verbose: verbose,
-		apps:    map[string]*application.Application{},
-		mu:      sync.Mutex{},
+		verbose:              verbose,
+		apps:                 map[string]*application.Application{},
+		mu:                   sync.Mutex{},
+		deviceUuid:           deviceUuid,
+		googleServiceAccount: googleServiceAccount,
+		languageCode:         languageCode,
 	}
 }
 
@@ -53,6 +57,7 @@ func (h *Handler) registerHandlers() {
 		POST /seek?uuid=<device_uuid>&seconds=<int>
 		POST /seek-to?uuid=<device_uuid>&seconds=<float>
 		POST /load?uuid=<device_uuid>&path=<filepath_or_url>&content_type=<string>
+		POST /tts {"text":<string>,"deviceUuid":[<string>],"googleServiceAccount":[<string>],"languageCode":[<string>]}
 	*/
 
 	http.HandleFunc("/devices", h.listDevices)
@@ -70,6 +75,7 @@ func (h *Handler) registerHandlers() {
 	http.HandleFunc("/seek", h.seek)
 	http.HandleFunc("/seek-to", h.seekTo)
 	http.HandleFunc("/load", h.load)
+	http.HandleFunc("/tts", h.tts)
 }
 
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
