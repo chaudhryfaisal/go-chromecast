@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"github.com/grandcat/zeroconf"
@@ -128,29 +129,43 @@ func getOrConnectApp(deviceUUID string, deviceAddr string, devicePort string, h 
 
 func play(app *application.Application, payload *TTSPayload, w http.ResponseWriter) {
 
-	fmt.Printf("play text=%s", payload.Text)
-	googleServiceAccountJson, err := ioutil.ReadFile(payload.GoogleServiceAccount)
+	fmt.Printf("play cache=%v text=%s\n", payload.Cache, payload.Text)
+
+	f, err := ttsFile(payload.Text, payload.Cache)
 	if err != nil {
-		httpValidationError(w, fmt.Sprintf("unable to open google service account file: %v\n", err))
+		fmt.Printf("unable to create temp file: %v\n", err)
 		return
 	}
+	if !fileExistsAndNonZeroSize(f.Name()) {
 
-	data, err := tts.Create(payload.Text, googleServiceAccountJson, payload.LanguageCode)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
+		googleServiceAccountJson, err := ioutil.ReadFile(payload.GoogleServiceAccount)
+		if err != nil {
+			httpValidationError(w, fmt.Sprintf("unable to open google service account file: %v\n", err))
+			return
+		}
+
+		data, err := tts.Create(payload.Text, googleServiceAccountJson, payload.LanguageCode)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			return
+		}
+		if _, err := f.Write(data); err != nil {
+			httpValidationError(w, fmt.Sprintf("unable to write to temp file: %v\n", err))
+
+			return
+		}
+		if err := f.Close(); err != nil {
+			httpValidationError(w, fmt.Sprintf("unable to close temp file: %v\n", err))
+			return
+		}
+
 	}
 
-	f, err := ioutil.TempFile("", "go-chromecast-tts")
-	if err != nil {
-		fmt.Printf("unable to create temp file: %v", err)
-		return
-	}
-
-	if _, err := f.Write(data); err != nil {
-		httpValidationError(w, fmt.Sprintf("unable to write to temp file: %v\n", err))
-
-		return
+	if !payload.Cache {
+		defer func() {
+			fmt.Printf("Removing: %v\n", f.Name())
+			os.Remove(f.Name())
+		}()
 	}
 
 	if err := app.Load(f.Name(), "audio/mp3", false, false, false); err != nil {
@@ -160,7 +175,34 @@ func play(app *application.Application, payload *TTSPayload, w http.ResponseWrit
 	return
 }
 
+func ttsFile(text string, cache bool) (f *os.File, err error) {
+	name := "go-chromecast-tts*.mp3"
+	f, err = nil, nil
+	if cache {
+		h := sha1.New()
+		h.Write([]byte(text))
+		bs := h.Sum(nil)
+		name = fmt.Sprintf("%s/%x.mp3", os.TempDir(), bs)
+		if fileExistsAndNonZeroSize(name) {
+			f, err = os.Open(name)
+		} else {
+			f, err = os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+		}
+	} else {
+		f, err = ioutil.TempFile("", name)
+	}
+	return f, err
+}
+func fileExistsAndNonZeroSize(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir() && info.Size() > 0
+}
+
 type TTSPayload struct {
+	Cache                bool
 	Text                 string
 	DeviceUuid           string
 	DeviceAddr           string
