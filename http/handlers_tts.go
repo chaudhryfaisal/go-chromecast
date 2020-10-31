@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/grandcat/zeroconf"
 	"github.com/vishen/go-chromecast/application"
 	"github.com/vishen/go-chromecast/dns"
 	"github.com/vishen/go-chromecast/tts"
@@ -78,19 +79,20 @@ func getOrConnectApp(deviceUUID string, deviceAddr string, devicePort string, h 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
 
-		devicesChan, err := dns.DiscoverCastDNSEntries(ctx, nil)
+		devicesChan, err := dns.DiscoverCastDNSEntriesWithIpType(ctx, nil, zeroconf.IPv4)
 		if err != nil {
 			h.log("error discovering entries: %v", err)
-			return nil, false
-		}
+		} else {
 
-		for device := range devicesChan {
-			// TODO: Should there be a lookup by name as well?
-			if device.UUID == deviceUUID {
-				deviceAddr = device.AddrV4.String()
-				// TODO: This is an unnessecary conversion since
-				// we cast back to int a bit later.
-				devicePort = strconv.Itoa(device.Port)
+			for device := range devicesChan {
+				h.log("found device %v", device)
+				// TODO: Should there be a lookup by name as well?
+				if device.UUID == deviceUUID {
+					deviceAddr = device.AddrV4.String()
+					// TODO: This is an unnessecary conversion since
+					// we cast back to int a bit later.
+					devicePort = strconv.Itoa(device.Port)
+				}
 			}
 		}
 
@@ -144,15 +146,10 @@ func play(app *application.Application, payload *TTSPayload, w http.ResponseWrit
 		fmt.Printf("unable to create temp file: %v", err)
 		return
 	}
-	defer os.Remove(f.Name())
 
 	if _, err := f.Write(data); err != nil {
 		httpValidationError(w, fmt.Sprintf("unable to write to temp file: %v\n", err))
 
-		return
-	}
-	if err := f.Close(); err != nil {
-		httpValidationError(w, fmt.Sprintf("unable to close temp file: %v\n", err))
 		return
 	}
 
