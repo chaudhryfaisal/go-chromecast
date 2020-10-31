@@ -18,16 +18,18 @@ type Handler struct {
 	mu   sync.Mutex
 	apps map[string]*application.Application
 
-	verbose                                        bool
-	deviceUuid, googleServiceAccount, languageCode string
+	verbose                                                                bool
+	deviceUuid, deviceAddr, devicePort, googleServiceAccount, languageCode string
 }
 
-func NewHandler(verbose bool, deviceUuid string, googleServiceAccount string, languageCode string) *Handler {
+func NewHandler(verbose bool, deviceUuid string, deviceAddr string, devicePort string, googleServiceAccount string, languageCode string) *Handler {
 	return &Handler{
 		verbose:              verbose,
 		apps:                 map[string]*application.Application{},
 		mu:                   sync.Mutex{},
 		deviceUuid:           deviceUuid,
+		deviceAddr:           deviceAddr,
+		devicePort:           devicePort,
 		googleServiceAccount: googleServiceAccount,
 		languageCode:         languageCode,
 	}

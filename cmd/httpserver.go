@@ -23,11 +23,13 @@ import (
 var httpserverCmd = &cobra.Command{
 	Use:   "httpserver",
 	Short: "Start the HTTP server",
-	Long: `Start the HTTP server which provides an HTTP api to control chromecast devices on a network.`,
+	Long:  `Start the HTTP server which provides an HTTP api to control chromecast devices on a network.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		addr, _ := cmd.Flags().GetString("http-addr")
-		port, _ := cmd.Flags().GetString("http-port")
+		httpAddr, _ := cmd.Flags().GetString("http-addr")
+		httpPort, _ := cmd.Flags().GetString("http-port")
+		deviceAddr, _ := cmd.Flags().GetString("addr")
+		devicePort, _ := cmd.Flags().GetString("port")
 		deviceUuid, _ := cmd.Flags().GetString("uuid")
 		googleServiceAccount, _ := cmd.Flags().GetString("google-service-account")
 		languageCode, _ := cmd.Flags().GetString("language-code")
@@ -37,7 +39,7 @@ var httpserverCmd = &cobra.Command{
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		debug, _ := cmd.Flags().GetBool("debug")
 
-		return http.NewHandler(verbose || debug, deviceUuid, googleServiceAccount, languageCode).Serve(addr + ":" + port)
+		return http.NewHandler(verbose || debug, deviceUuid, deviceAddr, devicePort, googleServiceAccount, languageCode).Serve(httpAddr + ":" + httpPort)
 	},
 }
 

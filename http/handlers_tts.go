@@ -30,6 +30,20 @@ func (h *Handler) tts(w http.ResponseWriter, r *http.Request) {
 		}
 		payload.DeviceUuid = h.deviceUuid
 	}
+	if payload.DeviceAddr == "" {
+		if h.deviceAddr == "" {
+			httpValidationError(w, "missing 'deviceAddr' in json payload or 'addr' in program args")
+			return
+		}
+		payload.DeviceAddr = h.deviceAddr
+	}
+	if payload.DevicePort == "" {
+		if h.devicePort == "" {
+			httpValidationError(w, "missing 'devicePort' in json payload or 'port' in program args")
+			return
+		}
+		payload.DevicePort = h.devicePort
+	}
 
 	if payload.GoogleServiceAccount == "" {
 		if h.googleServiceAccount == "" {
@@ -46,7 +60,7 @@ func (h *Handler) tts(w http.ResponseWriter, r *http.Request) {
 		payload.LanguageCode = h.languageCode
 	}
 
-	app, ok := getOrConnectApp(payload.DeviceUuid, h)
+	app, ok := getOrConnectApp(payload.DeviceUuid, payload.DeviceAddr, payload.DevicePort, h)
 	if ok {
 		play(app, &payload, w)
 	} else {
@@ -56,13 +70,11 @@ func (h *Handler) tts(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getOrConnectApp(deviceUUID string, h *Handler) (*application.Application, bool) {
+func getOrConnectApp(deviceUUID string, deviceAddr string, devicePort string, h *Handler) (*application.Application, bool) {
 	app, ok := h.app(deviceUUID)
 	if ok {
 		return app, ok
 	} else {
-		deviceAddr := ""
-		devicePort := ""
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
 
@@ -154,6 +166,8 @@ func play(app *application.Application, payload *TTSPayload, w http.ResponseWrit
 type TTSPayload struct {
 	Text                 string
 	DeviceUuid           string
+	DeviceAddr           string
+	DevicePort           string
 	GoogleServiceAccount string
 	LanguageCode         string
 }
