@@ -72,11 +72,18 @@ func DiscoverCastDNSEntryByName(ctx context.Context, iface *net.Interface, name 
 
 // DiscoverCastDNSEntries will return a channel with any cast dns entries
 // found.
+
 func DiscoverCastDNSEntries(ctx context.Context, iface *net.Interface) (<-chan CastEntry, error) {
+	return DiscoverCastDNSEntriesWithIpType(ctx, iface, zeroconf.IPv4AndIPv6)
+}
+
+func DiscoverCastDNSEntriesWithIpType(ctx context.Context, iface *net.Interface, ipType zeroconf.IPType) (<-chan CastEntry, error) {
 	var opts = []zeroconf.ClientOption{}
+	opts = append(opts, zeroconf.SelectIPTraffic(ipType))
 	if iface != nil {
 		opts = append(opts, zeroconf.SelectIfaces([]net.Interface{*iface}))
 	}
+
 	resolver, err := zeroconf.NewResolver(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new zeroconf resolver: %w", err)
